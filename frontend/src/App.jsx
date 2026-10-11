@@ -173,7 +173,6 @@ export default function App() {
           <div className="form-footnote"><span>ⓘ</span> New tickets start with an open status.</div>
         </aside>
       </div>
-      <footer><span>Mini Ticket Tracker</span><span>Built for clear, focused support work</span></footer>
     </main>
   );
 }
