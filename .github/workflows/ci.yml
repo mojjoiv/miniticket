@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: miniticket
+          POSTGRES_USER: miniticket
+          POSTGRES_PASSWORD: miniticket
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U miniticket -d miniticket"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://miniticket:miniticket@localhost:5432/miniticket
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Initialize database schema
+        run: PGPASSWORD=miniticket psql -h localhost -U miniticket -d miniticket -f backend/schema.sql
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm install
+      - name: Run API integration tests
+        working-directory: backend
+        run: npm test
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
