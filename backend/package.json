@@ -1,0 +1,20 @@
+{
+  "name": "miniticket-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "REST API for the Mini Ticket Tracker",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "supertest": "^7.0.0"
+  }
+}
