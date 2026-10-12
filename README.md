@@ -48,6 +48,3 @@ docker compose exec backend npm test
 ```
 
 The test runner creates and removes its own test records in the configured database. For isolated test data, set `DATABASE_URL` to a dedicated test database before running the backend test command.
-
-## Decisions & Tradeoffs
-I chose Express because the API is small and its routing and middleware are easy to follow. PostgreSQL stores the ticket enums as checked text values, keeping the schema readable while enforcing valid states at the database boundary. The API validates input before writing to the database so clients receive clear 400 responses rather than database errors. Pagination defaults to page 1 and 10 records, with a maximum limit to avoid unbounded responses. The UI is intentionally a single page with basic status and priority controls rather than a full design system. Docker Compose provides a repeatable local environment and initializes the schema on first database creation. The integration tests exercise the HTTP API against PostgreSQL instead of mocking the persistence layer. With more time, I would add migrations, stronger accessibility coverage, and separate test-database configuration in Compose.
