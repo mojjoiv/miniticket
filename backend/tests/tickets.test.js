@@ -9,11 +9,16 @@ const app = createApp(pool);
 const marker = `integration-${Date.now()}-`;
 
 test('ticket API integration', async (t) => {
-  await pool.query('SELECT 1');
+  // Register cleanup before touching the database so a connection failure does not
+  // leave the pool open and hang the test process.
   t.after(async () => {
-    await pool.query('DELETE FROM tickets WHERE title LIKE $1', [`${marker}%`]);
-    await pool.end();
+    try {
+      await pool.query('DELETE FROM tickets WHERE title LIKE $1', [`${marker}%`]);
+    } finally {
+      await pool.end();
+    }
   });
+  await pool.query('SELECT 1');
 
   let created;
   await t.test('POST /tickets creates a ticket with defaults', async () => {
@@ -41,6 +46,33 @@ test('ticket API integration', async (t) => {
     assert.equal(response.status, 200);
     assert.equal(response.body.status, 'in_progress');
     assert.equal(response.body.priority, 'high');
+  });
+
+  await t.test('POST /tickets rejects invalid status and priority values', async () => {
+    const invalidStatus = await request(app).post('/tickets').send({
+      title: `${marker}invalid status`,
+      status: 'waiting'
+    });
+    assert.equal(invalidStatus.status, 400);
+
+    const invalidPriority = await request(app).post('/tickets').send({
+      title: `${marker}invalid priority`,
+      priority: 'urgent'
+    });
+    assert.equal(invalidPriority.status, 400);
+  });
+
+  await t.test('PATCH /tickets/:id returns 404 for a missing ticket', async () => {
+    const response = await request(app).patch('/tickets/2147483647')
+      .send({ status: 'closed' });
+    assert.equal(response.status, 404);
+  });
+
+  await t.test('GET /tickets rejects invalid pagination', async () => {
+    for (const query of ['page=0', 'page=abc', 'limit=0', 'limit=101']) {
+      const response = await request(app).get(`/tickets?${query}`);
+      assert.equal(response.status, 400, query);
+    }
   });
 
   await t.test('GET /tickets supports status filter and pagination', async () => {
