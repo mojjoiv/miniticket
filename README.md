@@ -8,11 +8,23 @@ A small full-stack support-ticket tracker built with Express, PostgreSQL, React,
 - Docker Engine and Docker Compose v2
 - Git
 
+## Configure environment
+
+Copy the example file to create your local environment configuration, then replace the example database password with a local value. `.env` is ignored by Git; commit only `.env.example`, never real credentials.
+
+```bash
+cp .env.example .env
+```
+
+The template documents the PostgreSQL database/user/password, backend port and environment, database connection URL, and frontend API URL. The `DATABASE_URL` password must match `POSTGRES_PASSWORD`.
+
 ## Initialize and run
 
 ```bash
 git clone https://github.com/mojjoiv/miniticket.git
 cd miniticket
+cp .env.example .env
+# Edit .env and set a local password in both POSTGRES_PASSWORD and DATABASE_URL.
 docker compose up --build
 ```
 
