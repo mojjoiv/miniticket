@@ -2,16 +2,16 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: miniticket
-      POSTGRES_USER: miniticket
-      POSTGRES_PASSWORD: miniticket
+      POSTGRES_DB: ${POSTGRES_DB:-miniticket}
+      POSTGRES_USER: ${POSTGRES_USER:-miniticket}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-miniticket}
     ports:
       - "5432:5432"
     volumes:
       - ticket_data:/var/lib/postgresql/data
       - ./backend/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U miniticket -d miniticket"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-miniticket} -d ${POSTGRES_DB:-miniticket}"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -19,9 +19,9 @@ services:
   backend:
     build: ./backend
     environment:
-      PORT: 3000
-      DATABASE_URL: postgres://miniticket:miniticket@db:5432/miniticket
-      NODE_ENV: development
+      PORT: ${PORT:-3000}
+      DATABASE_URL: ${DATABASE_URL:-postgres://miniticket:miniticket@db:5432/miniticket}
+      NODE_ENV: ${NODE_ENV:-development}
     ports:
       - "3000:3000"
     depends_on:
@@ -31,7 +31,7 @@ services:
   frontend:
     build: ./frontend
     environment:
-      VITE_API_URL: http://localhost:3000
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
     ports:
       - "5173:5173"
     depends_on:
