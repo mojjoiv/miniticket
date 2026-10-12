@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -28,8 +28,11 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const latestRequest = useRef(0);
 
   const load = useCallback(async () => {
+    const requestId = ++latestRequest.current;
     try {
       setError('');
       const query = new URLSearchParams({ page: String(page), limit: '10' });
@@ -38,13 +41,15 @@ export default function App() {
         api(`/tickets?${query.toString()}`),
         api('/tickets/stats'),
       ]);
+      // Ignore stale responses when filters, pages, or mutations trigger a newer load.
+      if (requestId !== latestRequest.current) return;
       setTickets(list.data);
       setPagination(list.pagination);
       setStats(counts);
     } catch (err) {
-      setError(err.message);
+      if (requestId === latestRequest.current) setError(err.message);
     }
-  }, [page, statusFilter]);
+  }, [page, statusFilter, refreshVersion]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -66,7 +71,7 @@ export default function App() {
       setPage(1);
       setStatusFilter('');
       setNotice('Ticket created successfully.');
-      await load();
+      setRefreshVersion((version) => version + 1);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -80,7 +85,7 @@ export default function App() {
     try {
       await api(`/tickets/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
       setNotice('Ticket updated.');
-      await load();
+      setRefreshVersion((version) => version + 1);
     } catch (err) {
       setError(err.message);
     }
