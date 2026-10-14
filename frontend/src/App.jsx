@@ -186,10 +186,10 @@ export default function App() {
         <aside className="panel create-panel" aria-labelledby="new-ticket-heading">
           <h2 id="new-ticket-heading">New ticket</h2>
           <form onSubmit={createTicket}>
-            <label htmlFor="ticket-title">Ticket title <span className="required" aria-hidden="true">*</span>
+            <label htmlFor="ticket-title"><span className="field-label">Ticket title <span className="required" aria-hidden="true">*</span></span>
               <input id="ticket-title" name="title" required maxLength="200" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="e.g. Unable to reset password" />
             </label>
-            <label htmlFor="ticket-description">Description <span className="optional">(optional)</span>
+            <label htmlFor="ticket-description"><span className="field-label">Description <span className="optional">(optional)</span></span>
               <textarea id="ticket-description" name="description" rows="4" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Add details that may help resolve the issue." />
             </label>
             <label htmlFor="ticket-priority">Priority
