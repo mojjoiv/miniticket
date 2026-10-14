@@ -8,6 +8,12 @@ const statusLabels = {
   closed: 'Closed',
 };
 
+const dateFormatter = new Intl.DateTimeFormat('en-GB', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+});
+
 async function api(path, options = {}) {
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
@@ -62,15 +68,15 @@ export default function App() {
       await api('/tickets', {
         method: 'POST',
         body: JSON.stringify({
-          title: form.title,
-          description: form.description || null,
+          title: form.title.trim(),
+          description: form.description.trim() || null,
           priority: form.priority,
         }),
       });
       setForm({ title: '', description: '', priority: 'medium' });
       setPage(1);
       setStatusFilter('');
-      setNotice('Ticket created successfully.');
+      setNotice('Ticket created.');
       setRefreshVersion((version) => version + 1);
     } catch (err) {
       setError(err.message);
@@ -94,37 +100,39 @@ export default function App() {
   return (
     <main className="shell">
       <header className="topbar">
-        <div className="brand-mark">MT</div>
-        <div><p className="eyebrow">SUPPORT OPERATIONS</p><h1>Mini Ticket Tracker</h1></div>
-        <span className="live-indicator"><span /> Live workspace</span>
+        <div className="brand-mark" aria-hidden="true">MT</div>
+        <h1>Mini Ticket Tracker</h1>
       </header>
 
       <section className="intro">
-        <div><p className="eyebrow">OVERVIEW</p><h2>Keep every issue moving.</h2>
-          <p className="muted">A simple place to capture requests and track their progress.</p></div>
-        <div className="total-card"><span>Total tickets</span><strong>{stats.open + stats.in_progress + stats.closed}</strong></div>
+        <div>
+          <h2>Tickets</h2>
+          <p className="muted">Create requests, check their status, and keep the queue up to date.</p>
+        </div>
       </section>
 
       <section className="stats-grid" aria-label="Ticket counts by status">
         {[
-          ['open', 'Open', 'blue'],
-          ['in_progress', 'In progress', 'amber'],
-          ['closed', 'Closed', 'green'],
-        ].map(([key, label, color]) => (
-          <article className="stat-card" key={key}>
-            <div className={`stat-icon ${color}`}>{key === 'open' ? '○' : key === 'in_progress' ? '◷' : '✓'}</div>
-            <div><span>{label}</span><strong>{stats[key] ?? 0}</strong></div>
-            <span className="stat-caption">tickets</span>
+          ['open', 'Open'],
+          ['in_progress', 'In progress'],
+          ['closed', 'Closed'],
+        ].map(([key, label]) => (
+          <article className={`stat-card stat-${key}`} key={key}>
+            <span>{label}</span>
+            <strong>{stats[key] ?? 0}</strong>
           </article>
         ))}
       </section>
 
       <div className="content-grid">
-        <section className="panel ticket-panel">
+        <section className="panel ticket-panel" aria-labelledby="tickets-heading">
           <div className="panel-heading">
-            <div><p className="eyebrow">INBOX</p><h2>Tickets <span className="count-pill">{pagination.total}</span></h2></div>
-            <label className="filter-label">Status
-              <select value={statusFilter} onChange={(event) => { setPage(1); setStatusFilter(event.target.value); }}>
+            <div>
+              <h2 id="tickets-heading">Ticket list <span className="count-pill">{pagination.total}</span></h2>
+            </div>
+            <label className="filter-label" htmlFor="status-filter">
+              Status
+              <select id="status-filter" value={statusFilter} onChange={(event) => { setPage(1); setStatusFilter(event.target.value); }}>
                 <option value="">All statuses</option>
                 {Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
@@ -134,48 +142,64 @@ export default function App() {
           {error && <div className="alert error" role="alert">{error}</div>}
           {notice && <div className="alert success" role="status">{notice}</div>}
 
-          <div className="ticket-list">
-            {tickets.length === 0 && <div className="empty-state"><div className="empty-icon">✓</div><h3>No tickets here yet</h3><p>Create a ticket or choose another status filter.</p></div>}
+          <div className="ticket-list" aria-live="polite">
+            {tickets.length === 0 && (
+              <div className="empty-state">
+                <h3>{statusFilter ? `No ${statusLabels[statusFilter].toLowerCase()} tickets` : 'No tickets yet'}</h3>
+                <p>{statusFilter ? 'Choose another status to see more tickets.' : 'Use the form to add the first ticket.'}</p>
+              </div>
+            )}
             {tickets.map((ticket) => (
               <article className="ticket-row" key={ticket.id}>
                 <div className="ticket-main">
-                  <div className="ticket-title-line"><h3>{ticket.title}</h3><span className={`priority priority-${ticket.priority}`}>{ticket.priority}</span></div>
+                  <div className="ticket-title-line">
+                    <h3>{ticket.title}</h3>
+                    <span className={`priority priority-${ticket.priority}`}>{ticket.priority}</span>
+                  </div>
                   {ticket.description && <p className="ticket-description">{ticket.description}</p>}
-                  <div className="ticket-meta"><span>#{ticket.id}</span><span>{new Date(ticket.created_at).toLocaleDateString()}</span></div>
+                  <div className="ticket-meta">
+                    <span>Ticket #{ticket.id}</span>
+                    <time dateTime={ticket.created_at}>{dateFormatter.format(new Date(ticket.created_at))}</time>
+                  </div>
                 </div>
-                <label className="status-control"><span className={`status-dot dot-${ticket.status}`} /> <select aria-label={`Status for ${ticket.title}`} value={ticket.status} onChange={(event) => updateTicket(ticket.id, { status: event.target.value })}>
-                  {Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                </select></label>
+                <label className="status-control">
+                  <span className={`status-dot dot-${ticket.status}`} aria-hidden="true" />
+                  <span className="sr-only">Status for {ticket.title}</span>
+                  <select aria-label={`Status for ${ticket.title}`} value={ticket.status} onChange={(event) => updateTicket(ticket.id, { status: event.target.value })}>
+                    {Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </label>
               </article>
             ))}
           </div>
 
           <div className="pagination">
             <span>Showing {tickets.length ? (page - 1) * pagination.limit + 1 : 0}–{Math.min(page * pagination.limit, pagination.total)} of {pagination.total}</span>
-            <div><button className="secondary-button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>Previous</button>
+            <div>
+              <button className="secondary-button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>Previous</button>
               <span className="page-number">{page} / {Math.max(pagination.totalPages, 1)}</span>
-              <button className="secondary-button" disabled={page >= pagination.totalPages} onClick={() => setPage((value) => value + 1)}>Next</button></div>
+              <button className="secondary-button" disabled={page >= pagination.totalPages} onClick={() => setPage((value) => value + 1)}>Next</button>
+            </div>
           </div>
         </section>
 
-        <aside className="panel create-panel">
-          <p className="eyebrow">NEW REQUEST</p><h2>Create a ticket</h2>
-          <p className="muted form-intro">Add the details below to get an issue into the queue.</p>
+        <aside className="panel create-panel" aria-labelledby="new-ticket-heading">
+          <h2 id="new-ticket-heading">New ticket</h2>
           <form onSubmit={createTicket}>
-            <label>Ticket title <span className="required">*</span>
-              <input required maxLength="200" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="e.g. Unable to reset password" />
+            <label htmlFor="ticket-title"><span className="field-label">Ticket title <span className="required" aria-hidden="true">*</span></span>
+              <input id="ticket-title" name="title" required maxLength="200" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="e.g. Unable to reset password" />
             </label>
-            <label>Description <span className="optional">(optional)</span>
-              <textarea rows="4" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Share any details that will help resolve this issue..." />
+            <label htmlFor="ticket-description"><span className="field-label">Description <span className="optional">(optional)</span></span>
+              <textarea id="ticket-description" name="description" rows="4" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Add details that may help resolve the issue." />
             </label>
-            <label>Priority
-              <select value={form.priority} onChange={(event) => setForm({ ...form, priority: event.target.value })}>
+            <label htmlFor="ticket-priority">Priority
+              <select id="ticket-priority" name="priority" value={form.priority} onChange={(event) => setForm({ ...form, priority: event.target.value })}>
                 <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
               </select>
             </label>
-            <button className="primary-button" type="submit" disabled={busy}>{busy ? 'Creating…' : '＋  Create ticket'}</button>
+            <button className="primary-button" type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create ticket'}</button>
           </form>
-          <div className="form-footnote"><span>ⓘ</span> New tickets start with an open status.</div>
+          <p className="form-footnote">New tickets are added with Open status.</p>
         </aside>
       </div>
     </main>
